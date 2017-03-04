@@ -29,6 +29,8 @@ public class ImgData {
     int id;
     LatLng marker;
     HashSet<String> imgPath;
+    
+    //Take this change.
 }
 
 
