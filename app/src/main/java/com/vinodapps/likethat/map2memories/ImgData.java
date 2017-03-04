@@ -30,9 +30,7 @@ public class ImgData {
     LatLng marker;
     HashSet<String> imgPath;
     
-    //Push this change locally1.c
     
-    // this change is from the gitHub
 }
 
 
