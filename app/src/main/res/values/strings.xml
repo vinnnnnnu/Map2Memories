@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Map2Memories</string>
+    <string name="title_activity_maps">Map</string>
+    <string name="google_maps_key">AIzaSyD3PTzxjWM954EESWriUltD5pEa5Kqlp7k</string>
+    <string name="title_activity_maps2">Map</string>
+
+
+</resources>
