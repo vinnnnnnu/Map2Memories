@@ -30,7 +30,7 @@ public class ImgData {
     LatLng marker;
     HashSet<String> imgPath;
     
-    //Push this change locally.
+    //Push this change locally1.
 }
 
 
