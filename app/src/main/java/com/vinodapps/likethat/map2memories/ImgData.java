@@ -30,7 +30,7 @@ public class ImgData {
     LatLng marker;
     HashSet<String> imgPath;
 
-    //this is from tryout branch
+    //this is from tryout branch1
 }
 
 
