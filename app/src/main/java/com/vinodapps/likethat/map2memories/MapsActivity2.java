@@ -254,7 +254,6 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                                 }
                                 else {
                                     imgPaths.add(absolutePathOfImage);
-
                                 }
                             }
                             else {
