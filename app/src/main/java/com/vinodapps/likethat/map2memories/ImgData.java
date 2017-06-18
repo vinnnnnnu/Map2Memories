@@ -23,9 +23,11 @@ public class ImgData {
     public LatLng getMarker() {
         return marker;
     }
+
     public HashSet<String> getImgPath() {
         return imgPath;
     }
+
     int id;
     LatLng marker;
     HashSet<String> imgPath;

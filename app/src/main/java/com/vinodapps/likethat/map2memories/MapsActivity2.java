@@ -1,5 +1,7 @@
 package com.vinodapps.likethat.map2memories;
 
+import android.content.ContentValues;
+import android.content.Context;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
 import android.database.Cursor;
@@ -11,6 +13,7 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.provider.MediaStore;
+import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -23,6 +26,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.GoogleMap;
@@ -55,6 +59,9 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
     ProgressBar progressBar;
     Handler observerHandler;
     ImageObserver imageObserver;
+    private RelativeLayout relativeLayout;
+    Context mContext = this;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +69,7 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
         mainActivityCtx2 = this;
         setContentView(R.layout.activity_maps2);
         pager = (ViewPager) findViewById(R.id.myviewpager);
+        relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
         ActivityCompat.requestPermissions(MapsActivity2.this,
                 new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
@@ -76,7 +84,6 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
         observerHandler = new Handler();
         imageObserver = new ImageObserver(observerHandler);
         this.getContentResolver().registerContentObserver(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, false, imageObserver);
-
     }
 
     public static class ImageFragmentPagerAdapter extends FragmentPagerAdapter {
@@ -99,7 +106,7 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
     public static class SwipeFragment extends Fragment {
         @Override
         public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                Bundle savedInstanceState) {
+                                 Bundle savedInstanceState) {
             View swipeView = inflater.inflate(R.layout.swipefragment, container, false);
             ImageView imageView = (ImageView) swipeView.findViewById(R.id.imageView);
             Bundle bundle = getArguments();
@@ -123,15 +130,25 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
             case 1: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
-                    && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    progressBarHolder.setVisibility(View.VISIBLE);
                     thread = new Thread(new MyThread());
                     thread.start();
-                }
-                else {
+                } else {
 
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    Toast.makeText(MapsActivity2.this, "Permission denied to read your External storage", Toast.LENGTH_LONG).show();
+                    progressBarHolder.setVisibility(View.INVISIBLE);
+                    Snackbar snackbar = Snackbar.make(relativeLayout, "Permission denied to read your external storage", Toast.LENGTH_LONG)
+                            .setAction("Retry", new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    ActivityCompat.requestPermissions(MapsActivity2.this,
+                                            new String[]{android.Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+                                }
+                            });
+                    snackbar.setDuration(Snackbar.LENGTH_INDEFINITE);
+                    snackbar.show();
                 }
                 return;
             }
@@ -141,7 +158,37 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-
+        DBHelper mDBHelper = new DBHelper(mContext);
+        Cursor CR = mDBHelper.getData();
+        CR.moveToFirst();
+        HashMap<LatLng, HashSet<String>> mDataList1 = new HashMap<>();
+        HashSet<String> mImgPaths = null;
+        final ArrayList<Marker> tempMarker = new ArrayList<>();
+        try {
+            while (CR.moveToNext()) {
+                String[] latlong = CR.getString(0).split(",");
+                double latitude = Double.parseDouble(latlong[1]);
+                double longitude = Double.parseDouble(latlong[0]);
+                LatLng mLatLan = new LatLng(latitude, longitude);
+                if (mDataList1.containsKey(CR.getString(0))) {
+                    if (mDataList1.get(CR.getString(0)).contains(CR.getString(1))) {
+                    } else {
+                        mImgPaths.add(CR.getString(1));
+                    }
+                } else {
+                    mImgPaths = new HashSet<String>();
+                    mImgPaths.add(CR.getString(1));
+                    mDataList1.put(mLatLan, mImgPaths);
+                }
+                ImgData imgData = new ImgData(0, mLatLan, mImgPaths);
+                if (imgData.getMarker() != null) {
+                    mMap.addMarker(new MarkerOptions().position(new LatLng(imgData.getMarker().latitude, imgData.getMarker().longitude))).setTag(imgData);
+                    Marker marker = mMap.addMarker(new MarkerOptions().position(new LatLng(imgData.getMarker().latitude, imgData.getMarker().longitude)));
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error" + e.getMessage());
+        }
         handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -167,8 +214,7 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                                                           Bitmap cropdImag = decodeSampleBitmapFromFile(eachPath);
                                                           bitmapList.add(cropdImag);
                                                       }
-                                                  }
-                                                  catch (Exception e) {
+                                                  } catch (Exception e) {
                                                   }
                                               }
                                               ImgsForCarousel();
@@ -176,7 +222,6 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                                           }
                                       }
         );
-
     }
 
     public void ImgsForCarousel() {
@@ -185,47 +230,37 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
         pager.setAdapter(imageFragmentPagerAdapter);
     }
 
-
     private Bitmap decodeSampleBitmapFromFile(String imgName) {
         final BitmapFactory.Options options = new BitmapFactory.Options();
-
         try {
-
             options.inJustDecodeBounds = true;
             BitmapFactory.decodeFile(imgName, options);
             options.inSampleSize = calculateInSampleSize(options);
             options.inJustDecodeBounds = false;
 
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             System.out.println("Error" + e.getMessage());
         }
         return BitmapFactory.decodeFile(imgName, options);
     }
 
     private int calculateInSampleSize(BitmapFactory.Options options) {
-
         final int height = options.outHeight;
         final int width = options.outWidth;
         int inSampleSize = 1;
-
         if (height > target_image_height || width > target_image_width) {
             final int halfHeight = height / 2;
             final int halfWidth = width / 2;
-
             while ((halfHeight / inSampleSize) >= target_image_height && (halfWidth / inSampleSize) >= target_image_width) {
                 inSampleSize *= 2;
             }
-
         }
         return inSampleSize;
     }
 
     class MyThread implements Runnable {
-
         @Override
         public void run() {
-
             Uri uri;
             Cursor cursor;
             int column_index_data = 0;
@@ -251,17 +286,21 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                             latLng = new LatLng(latLong[0], latLong[1]);
                             if (tempimgDataList1.containsKey(latLng)) {
                                 if (tempimgDataList1.get(latLng).contains(absolutePathOfImage)) {
-                                }
-                                else {
+                                } else {
                                     imgPaths.add(absolutePathOfImage);
                                 }
-                            }
-                            else {
+                            } else {
                                 imgPaths = new HashSet<String>();
                                 imgPaths.add(absolutePathOfImage);
                                 tempimgDataList1.put(latLng, imgPaths);
-                            }
 
+                                // insertData into DB as well
+                                ContentValues mContentValues = new ContentValues();
+                                mContentValues.put(DBHelper.LOCATION_LAT_LAN, latLng.longitude + "," + latLng.latitude);
+                                mContentValues.put(DBHelper.IMAGE_PATH, absolutePathOfImage);
+                                DBHelper mDBHelper = new DBHelper(mContext);
+                                mDBHelper.insertData(mContentValues);
+                            }
                             if (latLng != null && imgPaths != null) {
                                 ImgData imgData = new ImgData(0, latLng, imgPaths);
                                 Message message = new Message();
@@ -271,23 +310,19 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                                 Thread.sleep(1000);
                             }
                         }
-                    }
-                    catch (IOException e) {
+                    } catch (IOException e) {
                         System.out.println("Error" + e.getMessage());
                         if (e instanceof InterruptedIOException) {
                             System.out.println("Invalid image format: " + e.getMessage());
-                        }
-                        else {
+                        } else {
                             System.out.println("Unable to load image: " + e.getMessage());
                         }
-
                     }
                     if (cursor.isLast()) {
                         progressBarHolder.setVisibility(View.INVISIBLE);
                     }
                 }
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 if (tempimgDataList1.size() == 0) {
                     runOnUiThread(new Runnable() {
                         @Override
@@ -297,8 +332,7 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
                     });
                 }
                 System.out.println("Error" + e.getMessage());
-            }
-            finally {
+            } finally {
                 cursor.close();
             }
         }
@@ -308,10 +342,12 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
         public ImageObserver(Handler handler) {
             super(handler);
         }
+
         @Override
         public void onChange(boolean selfChange) {
             super.onChange(selfChange);
         }
+
         @Override
         public void onChange(boolean selfChange, Uri uri) {
 
@@ -319,6 +355,7 @@ public class MapsActivity2 extends FragmentActivity implements OnMapReadyCallbac
             thread.start();
         }
     }
+
     @Override
     protected void onDestroy() {
         this.getContentResolver().unregisterContentObserver(imageObserver);

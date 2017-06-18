@@ -2,10 +2,10 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 24
-    buildToolsVersion "24.0.3"
+    buildToolsVersion '25.0.0'
     defaultConfig {
         applicationId "com.vinodapps.likethat.map2memories"
-        minSdkVersion 17
+        minSdkVersion 19
         targetSdkVersion 24
         versionCode 4
         versionName "1.0"
@@ -28,4 +28,5 @@ dependencies {
     compile 'com.android.support:appcompat-v7:24.2.1'
     compile 'com.google.android.gms:play-services:10.0.1'
     testCompile 'junit:junit:4.12'
+    compile 'com.android.support:design:23.0.1'
 }
